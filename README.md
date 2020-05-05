@@ -1,7 +1,7 @@
 # less-Windows
 GNU less compiled for Windows 10
 
-A 32-bit Windows 10 binary for `less.exe` and `less.key` is provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
+A 32-bit Windows 10 binary for `less.exe` and `lesskey.key` is provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
 
 ___
 
