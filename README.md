@@ -1,5 +1,5 @@
 # less-Windows
-GNU less compiled for Windows 10
+GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows 10
 
 32-bit Windows 10 binaries for `less.exe` and `lesskey.key` are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
 
@@ -87,7 +87,7 @@ Mode                LastWriteTime         Length Name
 ```
 
 ## Clean Up
-1) Once toy have exited the container, you can now remove the Docker image, which will look something like this, but with different ID numbers:
+1) Once you have exited the container, you can now remove the Docker image, which will look something like this, but with different ID numbers:
 
 ```
 C:\>docker image rm buildtools2019:latest
