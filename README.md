@@ -16,11 +16,18 @@ ___
 
 2) Here is the needed change, which is already included in my  [Dockerfile](https://github.com/jftuga/less-Windows/blob/master/Dockerfile).
 
-```sh
+```bat
 --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended `
 ```
+* *  I also removed `AzureBuildTools` as it is unnecessary.
 
-3) **Note:** Their `docker build` command can take several minutes to complete!
+3) As per their instructions, build the image:
+
+```bat
+docker build -t buildtools2019:latest -m 2GB .
+```
+
+4) **Note:** This `docker build` command can take several minutes to complete as it is a **14 GB** image.
 
 ## Source Code Changes
 
@@ -33,6 +40,9 @@ ___
 
 ```bat
 unzip -d c:\ less-557.zip
+cd c:\
+rem renaming will make it easier to compile future versions with the other commands given below
+ren less-557 less
 ```
 
 4) You will also need to manually modify `charset.c`.
@@ -50,7 +60,7 @@ unzip -d c:\ less-557.zip
 1) Start your docker container:
 
 ```bat
-cd c:\BuildTools
+cd c:\
 docker run -i -t --rm --mount type=bind,src=c:\less,dst=c:\less buildtools2019
 ```
 
@@ -62,17 +72,40 @@ cd c:\less
 nmake /f Makefile.win.msvc.nmake
 ```
 
-3) You should now have version of `less.exe` that is about 33 KB and `lesskey.exe` that is about 119 KB in size.
+3) You should now have version of `less.exe` that is about 267 KB in size and a `lesskey.exe` that is about 119 KB in size.
 
 4) You can now `exit` the Docker container
 
 ## Example binaries
 ```
-C:\less>dir *.exe
-
-Directory of C:\less
-
-05/05/2020  08:51 AM           273,408 less.exe
-05/05/2020  08:51 AM           121,856 lesskey.exe
-               2 File(s)        395,264 bytes
+PS C:\less> dir *.exe
+    Directory: C:\less
+Mode                LastWriteTime         Length Name
+----                -------------         ------ ----
+-a----         5/5/2020   9:57 AM         273408 less.exe
+-a----         5/5/2020   9:57 AM         121856 lesskey.exe
 ```
+
+## Clean Up
+1) Once toy have exited the container, you can now remove the Docker image, which will look something like this, but with different ID numbers:
+
+```
+C:\>docker image rm buildtools2019:latest
+Untagged: buildtools2019:latest
+Deleted: sha256:61907e0a943cf4fcb75f32e27f8d8e64e41ee3a0543a1a76da481802ce2e54c6
+Deleted: sha256:7f8448ecb8c4d88ba0bfdb17b68c93c36b02581d1ef4b3531cf58e36227f902e
+Deleted: sha256:d98bf876297aea21966613ba9a1185b655bbcf34739b8196fea6f176897a1940
+Deleted: sha256:96e20ee1eac6e6d02b32d646b52f8ed14720819f104eff06ce6aef34b979f96b
+Deleted: sha256:affaa7cc226aff9c3ae355f72f85570db2e44e6812e298cab18c5533bbae39b1
+Deleted: sha256:76af3aa750bb9b86c95d2218363b08e1074e3768ab25358734a31ef1df6b2efa
+Deleted: sha256:29ea33c2680dedaaf4b2a1e294f86b95482e7f28f42ef2ea0ae76b615049045e
+Deleted: sha256:9860872f53fc9f82389efe6b22b1a9e3cdc23b09da3892595ae49fbdf2463563
+```
+
+2) Remove the unneeded `BuildTools` folder
+
+```
+c:\>rd /s/q BuildTools
+```
+
+3) Your `less.exe` and `lesskey.exe` binaries should still be in your `C:\less` folder.
