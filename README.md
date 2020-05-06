@@ -1,6 +1,8 @@
 # less-Windows
 GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows 10
 
+# May 6, 2020 - I have discovered that colors do not work correctly in this version, use the Master branch instead.
+
 32-bit Windows 10 binaries for `less.exe` and `lesskey.key` are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
 
 ___
