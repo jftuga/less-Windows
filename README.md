@@ -6,12 +6,11 @@ GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows 10
 ___
 
 ## How to Compile **less** from source
-
 ___
 
 ## Installing the Docker Image
 
-1) Follow these instructions: [Install Build Tools into a container](https://docs.microsoft.com/en-us/visualstudio/install/build-tools-container?view=vs-2019)
+1) The instructions below are based on: [Microsoft's Install Build Tools into a container](https://docs.microsoft.com/en-us/visualstudio/install/build-tools-container?view=vs-2019)
 * * Their `Dockerfile` needs a small modification to include the [Visual Studio Build Tools](https://devblogs.microsoft.com/cppblog/using-msvc-in-a-docker-container-for-your-c-projects/).  This allows for C / C++ development.  It specifically adds `cl.exe` *(the C compiler)*, `link.exe` and `nmake.exe` which are required to build `less`.
 
 2) Here is the needed change, which is already included in my  [Dockerfile](https://github.com/jftuga/less-Windows/blob/master/Dockerfile).
@@ -27,33 +26,25 @@ ___
 docker build -t buildtools2019:latest -m 2GB .
 ```
 
-4) **Note:** This `docker build` command can take several minutes to complete as it is a **14 GB** image.
+4) **Note:** This `docker build` command can take several minutes to complete as it is a **14 GB** image and contains many files.
 
 ## Source Code Changes
 
-1) Download the newest version of: [less - a clean-compiling, more Windows-friendly, fork of the original version](https://github.com/rivy/less) 
-* *  A zip package is provided on his [Release Page](https://github.com/rivy/less/releases).  At the time of this writing, this is **less 557**.
+1) Clone the newest version of: [Less - text pager](https://github.com/gwsw/less) into the `c:\less` folder.
 
-2) The downloaded file may be called either `less-557.zip` or `v557.zip`
-
-3) Unzip the source to `c:\`
-
-```bat
-unzip -d c:\ less-557.zip
+```
 cd c:\
-rem renaming will make it easier to compile future versions with the other commands given below
-ren less-557 less
+git clone https://github.com/gwsw/less.git
 ```
 
-4) You will also need to manually modify `charset.c`.
+2) `mkfuncs.pl` and `mkhelp.pl` are used to generate two required source code files: `funcs.h` and `help.c` but they need `perl` installed. These perl scripts seem to mangle CRLF line endings under Windows.
+Therefore, just download them from the [rivy/less](https://github.com/rivy/less) repo. Note that `curl.exe` is now built into Windows. I have also provided these 2 files within this repo.
 
-* * Add this line of code  just before  `extern int bs_mode;` *(around line #32)*:
-
-```c
-#define WC_NO_BEST_FIT_CHARS 0x00000400
 ```
-
-5) I have already provided this modification: [charset.c for less version 557](https://github.com/jftuga/less-Windows/blob/master/charset.c).
+cd c:\less
+curl -LO https://raw.githubusercontent.com/rivy/less/master/funcs.h
+curl -LO https://raw.githubusercontent.com/rivy/less/master/help.c
+```
 
 ## Compilation
 
@@ -69,21 +60,21 @@ docker run -i -t --rm --mount type=bind,src=c:\less,dst=c:\less buildtools2019
 ```bat
 rem note: these commands are running from within your container
 cd c:\less
-nmake /f Makefile.win.msvc.nmake
+nmake /f Makefile.wnm
 ```
 
-3) You should now have version of `less.exe` that is about 267 KB in size and a `lesskey.exe` that is about 119 KB in size.
+3) After compilation completes, you should now have a version of `less.exe` that is about 134 KB in size and `lesskey.exe` that is about 14 KB in size.
 
 4) You can now `exit` the Docker container
 
 ## Example binaries
 ```
-PS C:\less> dir *.exe
+PS C:\less> dir less*.exe
     Directory: C:\less
 Mode                LastWriteTime         Length Name
 ----                -------------         ------ ----
--a----         5/5/2020   9:57 AM         273408 less.exe
--a----         5/5/2020   9:57 AM         121856 lesskey.exe
+-a----         5/6/2020   8:00 AM         137728 less.exe
+-a----         5/6/2020   8:00 AM          14848 lesskey.exe
 ```
 
 ## Clean Up
@@ -102,10 +93,4 @@ Deleted: sha256:29ea33c2680dedaaf4b2a1e294f86b95482e7f28f42ef2ea0ae76b615049045e
 Deleted: sha256:9860872f53fc9f82389efe6b22b1a9e3cdc23b09da3892595ae49fbdf2463563
 ```
 
-2) Remove the unneeded `BuildTools` folder
-
-```
-c:\>rd /s/q BuildTools
-```
-
-3) Your `less.exe` and `lesskey.exe` binaries should still be in your `C:\less` folder.
+2) Your `less.exe` and `lesskey.exe` binaries should still be in your `C:\less` folder.
