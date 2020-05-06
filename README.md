@@ -46,6 +46,8 @@ curl -LO https://raw.githubusercontent.com/rivy/less/master/funcs.h
 curl -LO https://raw.githubusercontent.com/rivy/less/master/help.c
 ```
 
+3) I also removed the annoying audio bell by modifying `screen.c`. The `bell()` function now simply returns without invoking `vbell()` or `beep()`.
+
 ## Compilation
 
 1) Start your docker container:
