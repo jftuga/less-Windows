@@ -1,98 +1,74 @@
 # less-Windows
 GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows 10
 
-32-bit Windows 10 binaries for `less.exe` and `lesskey.key` are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
+A stand-alone 64-bit Windows 10 binary for `less.exe` is provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
 
 ___
 
 ## How to Compile **less** from source
 ___
 
-## Installing the Docker Image
+## Installing mingw-w64 
+1) [mingw-w64](http://mingw-w64.org/doku.php/) is a port of the GCC compiler for Windows.
+* * Download `mingw-w64-install.exe` from here: [Mingw-builds](http://mingw-w64.org/doku.php/download/mingw-builds).
+2) Select these installer options:
+* * Version: `8.1.0`
+* * Architecture: `x86_64`
+* * Threads: `posix`
+* * Exception: `seh`
+* * Build Revision: `0`
+3) This will install about **440 MB** of files into `C:\Program Files\mingw-w64`
 
-1) The instructions below are based on: [Microsoft's Install Build Tools into a container](https://docs.microsoft.com/en-us/visualstudio/install/build-tools-container?view=vs-2019)
-* * Their `Dockerfile` needs a small modification to include the [Visual Studio Build Tools](https://devblogs.microsoft.com/cppblog/using-msvc-in-a-docker-container-for-your-c-projects/).  This allows for C / C++ development.  It specifically adds `cl.exe` *(the C compiler)*, `link.exe` and `nmake.exe` which are required to build `less`.
+## Installing Perl - *the easy way*
+1) `Perl` is required to build two source files: `funcs.h` and `help.c`
+2) [Git for Windows](https://git-scm.com/download/win) already includes Perl.
+* * I am currently using `Git-2.26.2-64-bit.exe`
 
-2) Here is the needed change, which is already included in my  [Dockerfile](https://github.com/jftuga/less-Windows/blob/master/Dockerfile).
-
-```bat
---add Microsoft.VisualStudio.Workload.VCTools --includeRecommended `
-```
-* *  I also removed `AzureBuildTools` as it is unnecessary.
-
-3) As per their instructions, build the image:
-
-```bat
-docker build -t buildtools2019:latest -m 2GB .
-```
-
-4) **Note:** This `docker build` command can take several minutes to complete as it is a **14 GB** image and contains many files.
-
-## Source Code Changes
-
+## Source Code
 1) Clone the newest version of: [Less - text pager](https://github.com/gwsw/less) into the `c:\less` folder.
 
-```
+```bat
 cd c:\
 git clone https://github.com/gwsw/less.git
 ```
 
-2) `mkfuncs.pl` and `mkhelp.pl` are used to generate two required source code files: `funcs.h` and `help.c` but they need `perl` installed. These perl scripts seem to mangle CRLF line endings under Windows.
-Therefore, just download them from the [rivy/less](https://github.com/rivy/less) repo. Note that `curl.exe` is now built into Windows. I have also provided these 2 files within this repo.
-
-```
-cd c:\less
-curl -LO https://raw.githubusercontent.com/rivy/less/master/funcs.h
-curl -LO https://raw.githubusercontent.com/rivy/less/master/help.c
-```
-
-3) I also removed the annoying audio bell by modifying `screen.c`. The `bell()` function now simply returns without invoking `vbell()` or `beep()`.
+## Environment
+1) Locate and run the `mingw-w64.bat` file to properly configure the PATH environment.
+2) For the `x86_64 8.1.0 seh` version, it is located here:
+* * `c:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw-w64.bat`
 
 ## Compilation
-
-1) Start your docker container:
-
-```bat
-cd c:\
-docker run -i -t --rm --mount type=bind,src=c:\less,dst=c:\less buildtools2019
-```
-
-2) To compile `less.exe` and `lesskey.exe` run this command:
+1) To compile `less.exe` run these commands:
 
 ```bat
-rem note: these commands are running from within your container
+rem configure PATH for mingw-w64
+"c:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw-w64.bat"
+rem configure PATH to also include Perl
+set PATH=%PATH%;c:\Program Files\Git\usr\bin
+rem ensure perl is working by display its version...
+perl -v
+rem compile the less source code into less.exe
 cd c:\less
-nmake /f Makefile.wnm
+mingw32-make.exe -f Makefile.wng REGEX_PACKAGE=regcomp-local
 ```
 
-3) After compilation completes, you should now have a version of `less.exe` that is about 134 KB in size and `lesskey.exe` that is about 14 KB in size.
-
-4) You can now `exit` the Docker container
+2) After compilation completes, you should now have a version of `less.exe` that is about 255 KB in size. `lessecho.exe` and `lesskey.exe` should have also been compiled.
 
 ## Example binaries
 ```
-PS C:\less> dir less*.exe
-    Directory: C:\less
-Mode                LastWriteTime         Length Name
-----                -------------         ------ ----
--a----         5/6/2020   8:00 AM         137728 less.exe
--a----         5/6/2020   8:00 AM          14848 lesskey.exe
+ Directory of c:\less
+
+05/06/2020  10:30 AM           260,711 less.exe
+05/06/2020  10:30 AM            57,360 lessecho.exe
+05/06/2020  10:30 AM            65,526 lesskey.exe
+               3 File(s)        383,597 bytes
 ```
 
 ## Clean Up
-1) Once you have exited the container, you can now remove the Docker image, which will look something like this, but with different ID numbers:
+1) Remove the `mingw-w64` compiler by using a `Run as administrator` command prompt:
 
+```bat
+"c:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\uninstall.exe"
+rd /s/q "c:\Program Files\mingw-w64"
 ```
-C:\>docker image rm buildtools2019:latest
-Untagged: buildtools2019:latest
-Deleted: sha256:61907e0a943cf4fcb75f32e27f8d8e64e41ee3a0543a1a76da481802ce2e54c6
-Deleted: sha256:7f8448ecb8c4d88ba0bfdb17b68c93c36b02581d1ef4b3531cf58e36227f902e
-Deleted: sha256:d98bf876297aea21966613ba9a1185b655bbcf34739b8196fea6f176897a1940
-Deleted: sha256:96e20ee1eac6e6d02b32d646b52f8ed14720819f104eff06ce6aef34b979f96b
-Deleted: sha256:affaa7cc226aff9c3ae355f72f85570db2e44e6812e298cab18c5533bbae39b1
-Deleted: sha256:76af3aa750bb9b86c95d2218363b08e1074e3768ab25358734a31ef1df6b2efa
-Deleted: sha256:29ea33c2680dedaaf4b2a1e294f86b95482e7f28f42ef2ea0ae76b615049045e
-Deleted: sha256:9860872f53fc9f82389efe6b22b1a9e3cdc23b09da3892595ae49fbdf2463563
-```
-
-2) Your `less.exe` and `lesskey.exe` binaries should still be in your `C:\less` folder.
+2) The `less.exe`, `lessecho.exe`, and `lesskey.exe` binaries should still exist in the `C:\less` folder.
