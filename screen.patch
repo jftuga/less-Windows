@@ -1,0 +1,14 @@
+--- screen.c	2020-05-06 05:22:19.491327100 -0400
++++ screen-NoBeep.c	2020-05-06 05:20:00.670105000 -0400
+@@ -2123,10 +2123,7 @@
+ 	public void
+ bell(VOID_PARAM)
+ {
+-	if (quiet == VERY_QUIET)
+-		vbell();
+-	else
+-		beep();
++	return;
+ }
+ 
+ /*
