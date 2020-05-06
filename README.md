@@ -9,7 +9,7 @@ ___
 ___
 
 ## Installing mingw-w64 
-1) [mingw-w64](http://mingw-w64.org/doku.php/) is a port of the GCC compiler for Windows.
+1) [mingw-w64](http://mingw-w64.org/) is a port of the GCC compiler for Windows.
 * * Download `mingw-w64-install.exe` from here: [Mingw-builds](http://mingw-w64.org/doku.php/download/mingw-builds).
 2) Select these installer options:
 * * Version: `8.1.0`
