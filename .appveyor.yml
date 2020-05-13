@@ -21,5 +21,7 @@ deploy:
   provider: GitHub
   artifact: /.*\.exe/
   draft: true
+  auth_token:
+    secure: VlfBv4xKonkDXe8nD0wW5UZQd7CYNQj5Nl+Xvpk6mwwwh8rmQED8jOXfdpYWKK4v
   on:
     branch: master
