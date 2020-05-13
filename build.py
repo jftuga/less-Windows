@@ -24,6 +24,28 @@ COMPILE=r'"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxi
 
 version_url_re = re.compile(r"""Download <strong>BETA</strong> version (.*?) """, re.M|re.S|re.I)
 
+def download_less_web_page() -> str:
+    """Download LESSURL and save the contents to fname
+
+    Returns:
+        An in-memory version of the downloaded web page
+    """
+
+    fname = "download.html"
+    try:
+        urllib.request.urlretrieve(LESSURL, fname)
+        time.sleep(1)
+    except:
+        return False
+
+    try:
+        with open(fname) as fp:
+            page = fp.read()
+    except:
+        return False
+
+    return page
+
 def get_latest_version_url(page:str) -> tuple:
     """Return the URL for the "BETA version"
 
@@ -94,7 +116,7 @@ def create_compile_batchfile(archive_dest:str):
         with open(bat, "w") as fp:
             fp.write("@echo off\n")
             fp.write("cd %s\n" % (archive_dest))
-            fp.write("%s\n" % (COMPILE))
+            fp.write("call %s\n" % (COMPILE))
             fp.write("nmake /f Makefile.wnm\n")
     except:
         return False
@@ -102,32 +124,34 @@ def create_compile_batchfile(archive_dest:str):
     return bat
 
 def main():
-    with open("download.html") as fp:
-        page = fp.read()
+    if not (page := download_less_web_page()):
+        print("Unable to download URL: %s" % (LESSURL))
+        sys.exit(10)
+        return
 
     version, url = get_latest_version_url(page)
     if None == version:
         print("Unable to extract version from: %s" % (LESSURL), file=sys.stderr)
-        sys.exit(1)
+        sys.exit(20)
     
     if not (archive := download_and_save(url)):
         print("Unable to download file: %s" % (url), file=sys.stderr)
-        sys.exit(2)
+        sys.exit(30)
 
     if not (archive_dest := extract_archive(archive)):
         print("Unable to unzip archive: %s" % (archive), file=sys.stderr)
-        sys.exit(3)
+        sys.exit(40)
     
     if not ( cmd := create_compile_batchfile(archive_dest)):
         print("Unable to create batch file", file=sys.stderr)
-        sys.exit(4)
+        sys.exit(50)
 
     result = subprocess.run((cmd,), shell=True, capture_output=True)
     if result.returncode > 0:
         err = result.stderr.decode("utf-8")
         out = result.stdout.decode("utf-8")
         print("Compile failed:\n%s\n\n%s\n" % (out, err))
-        sys.exit(5)
+        sys.exit(60)
 
 
 if "__main__" == __name__:
