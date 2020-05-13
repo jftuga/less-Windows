@@ -1,4 +1,4 @@
-version: 561.1
+version: 561.{build}
 
 branches:
   only:
