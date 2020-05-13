@@ -118,6 +118,8 @@ def create_compile_batchfile(archive_dest:str):
             fp.write("cd %s\n" % (archive_dest))
             fp.write("call %s\n" % (COMPILE))
             fp.write("nmake /f Makefile.wnm\n")
+            fp.write("copy /y less.exe ..\n")
+            fp.write("copy /y lesskey.exe ..\n")
     except:
         return False
 
