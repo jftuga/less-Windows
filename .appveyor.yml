@@ -15,7 +15,8 @@ artifacts:
 
   -path: c:\projects\less-Windows
    name: less.exe
-
+  -path: c:\projects\less-Windows
+   name: lesskey.exe
 
 deploy:
 
