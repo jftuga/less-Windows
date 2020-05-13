@@ -16,9 +16,9 @@ artifacts:
 
 
 deploy:
-
+  release: less-v$(appveyor_build_version)
   provider: GitHub
-   artifact: /.*\.exe/
-   draft: true
-   on:
+  artifact: /.*\.exe/
+  draft: true
+  on:
     branch: master
