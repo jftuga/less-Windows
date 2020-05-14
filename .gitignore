@@ -2,3 +2,4 @@ less-*/
 less*.zip
 compile.bat
 download.html
+__pycache__/
