@@ -35,11 +35,11 @@ def get_latest_local_version(page:str) -> str:
         j = json.loads(page)
     except:
         return False
-    
+
     newest = j[0]
     # The initial version is different than future versions
-    if "v560" == newest:
-        newest = "less-%s" % newest
+    if "v560" == newest["name"]:
+        return "560"
 
     # given less-v561.17, return 561
     release_version = newest["name"][6:9]
@@ -70,7 +70,7 @@ def main():
         print(f"Versions are the same: remote_version: {remote_version}   local_version: {local_version}")
         sys.exit(100)
     
-    print("Remote version is newer: remote_version: {remote_version}   local_version: {local_version}")
+    print(f"Remote version is newer: remote_version: {remote_version}   local_version: {local_version}")
 
 if "__main__" == __name__:
     main()
