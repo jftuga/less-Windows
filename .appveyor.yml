@@ -9,12 +9,13 @@ image: Visual Studio 2019
 
 clone_folder: c:\projects\less-Windows
 
+before_build: version_compare.py
+
 build_script: build.py
 
 artifacts:
   - path: less.exe
   - path: lesskey.exe
-
 
 deploy:
   release: less-v$(appveyor_build_version)
