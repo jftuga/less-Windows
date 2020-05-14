@@ -37,6 +37,10 @@ def get_latest_local_version(page:str) -> str:
         return False
     
     newest = j[0]
+    # The initial version is different than future versions
+    if "v560" == newest:
+        newest = "less-%s" % newest
+
     # given less-v561.17, return 561
     release_version = newest["name"][6:9]
     return release_version
@@ -49,7 +53,7 @@ def main():
         sys.exit(10)
 
     if not (local_version := get_latest_local_version(page)):
-        print("Unable to download URL: %s" % (LOCALURL))
+        print("Unable to extract version from URL: %s" % (LOCALURL))
         sys.exit(20)
 
     if not (page := download_less_web_page()):
