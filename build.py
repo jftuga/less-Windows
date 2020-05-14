@@ -11,60 +11,15 @@ less.exe and lesskey.exe are created
 
 import os
 import os.path
-import re
 import shutil
 import subprocess
 import sys
 import time
 import urllib.request
 import zipfile
+from shared import download_less_web_page, get_latest_version_url, LESSURL
 
-LESSURL="http://greenwoodsoftware.com/less/download.html"
 COMPILE=r'"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"'
-
-version_url_re = re.compile(r"""Download <strong>BETA</strong> version (.*?) """, re.M|re.S|re.I)
-
-def download_less_web_page() -> str:
-    """Download LESSURL and save the contents to fname
-
-    Returns:
-        An in-memory version of the downloaded web page
-    """
-
-    fname = "download.html"
-    try:
-        urllib.request.urlretrieve(LESSURL, fname)
-        time.sleep(1)
-    except:
-        return False
-
-    try:
-        with open(fname) as fp:
-            page = fp.read()
-    except:
-        return False
-
-    return page
-
-def get_latest_version_url(page:str) -> tuple:
-    """Return the URL for the "BETA version"
-
-    Args:
-        page: an HTML web page, provided in LESSURL
-
-    Returns:
-        A tuple containing: (version number, zip archive URL)
-        Ex: 551, http://greenwoodsoftware.com/less/less-551.zip
-    """
-
-    match = version_url_re.findall(page)
-    if not len(match):
-        return (None,None)
-
-    version = match[0]
-    archive = "less-%s.zip" % (version)
-    url = LESSURL.replace("download.html",archive)
-    return (version, url)
 
 def download_and_save(url:str) -> bool:
     """Download the less .zip file and save it to the current directory
