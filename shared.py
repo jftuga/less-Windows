@@ -14,6 +14,7 @@ import urllib.request
 
 LESSURL="http://greenwoodsoftware.com/less/download.html"
 version_url_re = re.compile(r"""Download <strong>BETA</strong> version (.*?) """, re.M|re.S|re.I)
+NEWFILE="new.txt"
 
 def download_less_web_page() -> str:
     """Download LESSURL and save the contents to fname

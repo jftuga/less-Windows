@@ -11,7 +11,7 @@ Compare local github version with less web site
 import json
 import urllib.request
 import sys
-from shared import download_less_web_page, get_latest_version_url, LESSURL
+from shared import download_less_web_page, get_latest_version_url, LESSURL, NEWFILE
 
 LOCALURL="https://api.github.com/repos/jftuga/less-Windows/releases"
 
@@ -71,6 +71,13 @@ def main():
         sys.exit(100)
     
     print(f"Remote version is newer: remote_version: {remote_version}   local_version: {local_version}")
+    print(f"Saving new version to file: {NEWFILE}")
+    try:
+        with open(NEWFILE, mode="w") as fp:
+            fp.write("%s\n" % remote_version)
+    except:
+        print(f"Unable able to open file for writing: {NEWFILE}")
+        sys.exit(50)
 
 if "__main__" == __name__:
     main()

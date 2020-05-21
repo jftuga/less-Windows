@@ -18,7 +18,7 @@ artifacts:
   - path: lesskey.exe
 
 deploy:
-  release: less-v$(appveyor_build_version)
+  release: less-v$(%NEWVERSION%)
   description: Built by AppVeyor on $(appveyor_repo_commit_timestamp)
   provider: GitHub
   artifact: /.*\.exe/

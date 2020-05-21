@@ -17,7 +17,7 @@ import sys
 import time
 import urllib.request
 import zipfile
-from shared import download_less_web_page, get_latest_version_url, LESSURL
+from shared import download_less_web_page, get_latest_version_url, LESSURL, NEWFILE
 
 COMPILE=r'"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"'
 
@@ -66,6 +66,11 @@ def create_compile_batchfile(archive_dest:str):
     and nmake compile commands
     """
 
+    new = False
+    if os.path.exists(NEWFILE):
+        with open(NEWFILE) as f: 
+            new = f.read().splitlines()[0]
+
     bat = "compile.bat"
     try:
         with open(bat, "w") as fp:
@@ -75,6 +80,8 @@ def create_compile_batchfile(archive_dest:str):
             fp.write("nmake /f Makefile.wnm\n")
             fp.write("copy /y less.exe ..\n")
             fp.write("copy /y lesskey.exe ..\n")
+            if new:
+                fp.write("set NEWVERSION=%s.0\n" % (new))
     except:
         return False
 
