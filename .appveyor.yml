@@ -26,7 +26,7 @@ deploy:
   description: Built by AppVeyor on $(appveyor_repo_commit_timestamp)
   provider: GitHub
   artifact: /.*\.exe/
-  draft: true
+  draft: false
   auth_token:
     secure: VlfBv4xKonkDXe8nD0wW5UZQd7CYNQj5Nl+Xvpk6mwwwh8rmQED8jOXfdpYWKK4v
   on:
