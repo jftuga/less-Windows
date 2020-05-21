@@ -74,7 +74,7 @@ def main():
     print(f"Saving new version to file: {NEWFILE}")
     try:
         with open(NEWFILE, mode="w") as fp:
-            fp.write("%s\n" % remote_version)
+            fp.write("%s.0\n" % remote_version)
     except:
         print(f"Unable able to open file for writing: {NEWFILE}")
         sys.exit(50)
