@@ -1,4 +1,4 @@
-version: {build}
+version: less.{build}
 
 branches:
   only:
