@@ -13,6 +13,10 @@ before_build: version_compare.py
 
 build_script: build.py
 
+after_build:
+  cmd: set /p NEWVERSION=<new.txt
+  cmd: echo NEWVERSION is %NEWVERSION%
+
 artifacts:
   - path: less.exe
   - path: lesskey.exe
