@@ -13,7 +13,7 @@ import time
 import urllib.request
 
 LESSURL="http://greenwoodsoftware.com/less/download.html"
-version_url_re = re.compile(r"""Download <strong>BETA</strong> version (.*?) """, re.M|re.S|re.I)
+version_url_re = re.compile(r"""Download <strong>RECOMMENDED</strong> version (.*?) """, re.M|re.S|re.I)
 NEWFILE="new.txt"
 
 def download_less_web_page() -> str:
@@ -39,7 +39,7 @@ def download_less_web_page() -> str:
     return page
 
 def get_latest_version_url(page:str) -> tuple:
-    """Return the URL for the "BETA version"
+    """Return the URL for the "RECOMMENDED version"
 
     Args:
         page: an HTML web page, provided in LESSURL
