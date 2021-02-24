@@ -69,7 +69,11 @@ def main():
     if remote_version == local_version:
         print(f"Versions are the same: remote_version: {remote_version}   local_version: {local_version}")
         sys.exit(100)
-    
+
+    if int(local_version) >= int(remote_version):
+        print(f"Local version is newer: remote_version: {remote_version}   local_version: {local_version}")
+        sys.exit(120)
+
     print(f"Remote version is newer: remote_version: {remote_version}   local_version: {local_version}")
     print(f"Saving new version to file: {NEWFILE}")
     try:
@@ -79,6 +83,6 @@ def main():
         print(f"Unable able to open file for writing: {NEWFILE}")
         sys.exit(50)
 
+
 if "__main__" == __name__:
     main()
-    
