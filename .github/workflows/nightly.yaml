@@ -3,6 +3,8 @@ name: nightly
 on:
   push:
     branches: [ master ]
+  pull_request:
+    branches: [ master ]
   schedule:
     - cron: '0 0 * * *'
     
@@ -27,6 +29,7 @@ jobs:
     - name: Echo NEWVERSION
       run: echo "NEWVERSION is $env:NEWVERSION"
     - name: Persist NEWVERSION
+      if: ${{ github.event_name == 'push' }}
       uses: nick-invision/persist-action-data@v1
       with:
         data: ${{ env.NEWVERSION }}
@@ -45,8 +48,9 @@ jobs:
 
   release:
     needs: build
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-   
+    
     steps:
     - name: Get less artifact
       uses: actions/download-artifact@v2
