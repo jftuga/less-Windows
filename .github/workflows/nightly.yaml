@@ -1,0 +1,93 @@
+name: nightly
+
+on:
+  push:
+    branches: [ master ]
+  schedule:
+    - cron: '0 0 * * *'
+    
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.x'
+    - uses: ilammy/msvc-dev-cmd@v1.7.0
+    
+    - name: Compare versions
+      run: python .\version_compare.py
+    - name: Build
+      run: python .\build.py
+      
+    - name: Set NEWVERSION
+      run: Write-Output NEWVERSION="$(Get-Content .\new.txt)" >> $env:GITHUB_ENV
+    - name: Echo NEWVERSION
+      run: echo "NEWVERSION is $env:NEWVERSION"
+    - name: Persist NEWVERSION
+      uses: nick-invision/persist-action-data@v1
+      with:
+        data: ${{ env.NEWVERSION }}
+        variable: NEWVERSION
+    
+    - name: Upload less to artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: less
+        path: less.exe
+    - name: Upload lesskey to artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: lesskey
+        path: lesskey.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+   
+    steps:
+    - name: Get less artifact
+      uses: actions/download-artifact@v2
+      with:
+          name: less
+    - name: Get lesskey artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: lesskey
+    - name: Get NEWVERSION 
+      uses: nick-invision/persist-action-data@v1
+      with:
+        retrieve_variables: NEWVERSION
+    - name: Remove NEWVERSION from artifacts
+      uses: geekyeggo/delete-artifact@v1
+      with:
+        name: NEWVERSION
+        
+    - uses: octokit/request-action@v2.x
+      id: get_workflow_runtime
+      with:
+        route: GET /repos/{owner}/{repo}/actions/runs/{run_id}
+        owner: ${{ github.repository_owner }}
+        repo: less-Windows
+        run_id: ${{ github.run_id }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+    - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        delete_release: true
+        tag_name: less-v${{ env.NEWVERSION }}
+    - uses: meeDamian/github-release@2.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag: less-v${{ env.NEWVERSION }}
+        commitish: ${{ github.sha }}
+        gzip: false
+        files: |
+          less.exe:./less.exe
+          lesskey.exe:./lesskey.exe
+        body: Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
