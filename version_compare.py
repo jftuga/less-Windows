@@ -36,6 +36,9 @@ def get_latest_local_version(page:str) -> str:
     except:
         return False
 
+    if not len(j):
+        return "500"
+
     newest = j[0]
     # The initial version is different than future versions
     if "v560" == newest["name"]:
@@ -71,7 +74,7 @@ def main():
         sys.exit(100)
 
     if int(local_version) >= int(remote_version):
-        print(f"Local version is newer: remote_version: {remote_version}   local_version: {local_version}")
+        print(f"Local version is newer: local_version: {local_version}   remote_version: {remote_version}")
         sys.exit(120)
 
     print(f"Remote version is newer: remote_version: {remote_version}   local_version: {local_version}")
