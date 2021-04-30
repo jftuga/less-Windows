@@ -12,9 +12,10 @@ import re
 import time
 import urllib.request
 
-LESSURL="http://greenwoodsoftware.com/less/download.html"
-version_url_re = re.compile(r"""Download <strong>RECOMMENDED</strong> version (.*?) """, re.M|re.S|re.I)
-NEWFILE="new.txt"
+LESSURL = "http://greenwoodsoftware.com/less/download.html"
+version_url_re = re.compile(r"""Download <strong>RECOMMENDED</strong> version (.*?) """, re.M | re.S | re.I)
+NEWFILE = "new.txt"
+
 
 def download_less_web_page() -> str:
     """Download LESSURL and save the contents to fname
@@ -38,7 +39,8 @@ def download_less_web_page() -> str:
 
     return page
 
-def get_latest_version_url(page:str) -> tuple:
+
+def get_latest_version_url(page: str) -> tuple:
     """Return the URL for the "RECOMMENDED version"
 
     Args:
@@ -51,10 +53,9 @@ def get_latest_version_url(page:str) -> tuple:
 
     match = version_url_re.findall(page)
     if not len(match):
-        return (None,None)
+        return (None, None)
 
     version = match[0]
-    archive = "less-%s.zip" % (version)
-    url = LESSURL.replace("download.html",archive)
-    return (version, url)
-    
+    archive = "less-%s.zip" % version
+    url = LESSURL.replace("download.html", archive)
+    return version, url
