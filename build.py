@@ -19,9 +19,10 @@ import urllib.request
 import zipfile
 from shared import download_less_web_page, get_latest_version_url, LESSURL
 
-COMPILE=r'"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"'
+COMPILE = r'"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"'
 
-def download_and_save(url:str) -> bool:
+
+def download_and_save(url: str) -> bool:
     """Download the less .zip file and save it to the current directory
     """
 
@@ -39,7 +40,8 @@ def download_and_save(url:str) -> bool:
 
     return archive
 
-def extract_archive(archive:str) -> str:
+
+def extract_archive(archive: str) -> str:
     """Unzip the archive file, remove preexisting directory
     """
 
@@ -54,14 +56,15 @@ def extract_archive(archive:str) -> str:
         except:
             return False
     try:
-        with zipfile.ZipFile(archive,"r") as z:
+        with zipfile.ZipFile(archive, "r") as z:
             z.extractall(".")
     except:
         return False
 
     return zip_dest
 
-def create_compile_batchfile(archive_dest:str):
+
+def create_compile_batchfile(archive_dest: str):
     """Create a .bat file containing environment setup
     and nmake compile commands
     """
@@ -80,6 +83,7 @@ def create_compile_batchfile(archive_dest:str):
 
     return bat
 
+
 def main():
     if not (page := download_less_web_page()):
         print("Unable to download URL: %s" % (LESSURL))
@@ -87,10 +91,10 @@ def main():
         return
 
     version, url = get_latest_version_url(page)
-    if None == version:
+    if version is None:
         print("Unable to extract version from: %s" % (LESSURL), file=sys.stderr)
         sys.exit(20)
-    
+
     if not (archive := download_and_save(url)):
         print("Unable to download file: %s" % (url), file=sys.stderr)
         sys.exit(30)
@@ -98,8 +102,8 @@ def main():
     if not (archive_dest := extract_archive(archive)):
         print("Unable to unzip archive: %s" % (archive), file=sys.stderr)
         sys.exit(40)
-    
-    if not ( cmd := create_compile_batchfile(archive_dest)):
+
+    if not (cmd := create_compile_batchfile(archive_dest)):
         print("Unable to create batch file", file=sys.stderr)
         sys.exit(50)
 
@@ -113,5 +117,5 @@ def main():
 
 if "__main__" == __name__:
     main()
-    
+
 # end of script
