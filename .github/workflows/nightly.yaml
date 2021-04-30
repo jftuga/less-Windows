@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: windows-2019
+    
+    outputs:
+      new_version: ${{ steps.get_new_version.outputs.version }}
 
     steps:
     - uses: actions/checkout@v2
@@ -24,16 +27,12 @@ jobs:
     - name: Build
       run: python .\build.py
       
-    - name: Set NEWVERSION
-      run: Write-Output NEWVERSION="$(Get-Content .\new.txt)" >> $env:GITHUB_ENV
-    - name: Echo NEWVERSION
-      run: echo "NEWVERSION is $env:NEWVERSION"
-    - name: Persist NEWVERSION
-      if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
-      uses: nick-invision/persist-action-data@v1
-      with:
-        data: ${{ env.NEWVERSION }}
-        variable: NEWVERSION
+    - name: Get NEWVERSION
+      id: get_new_version
+      run: |
+        $env:NEWVERSION = "$(Get-Content .\new.txt)"
+        echo "New version is $env:NEWVERSION"
+        echo "::set-output name=version::$env:NEWVERSION"
     
     - name: Upload less to artifact
       uses: actions/upload-artifact@v2
@@ -60,15 +59,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: lesskey
-    - name: Get NEWVERSION 
-      uses: nick-invision/persist-action-data@v1
-      with:
-        retrieve_variables: NEWVERSION
-    - name: Remove NEWVERSION from artifacts
-      uses: geekyeggo/delete-artifact@v1
-      with:
-        name: NEWVERSION
-        
+    
     - uses: octokit/request-action@v2.x
       id: get_workflow_runtime
       with:
@@ -78,20 +69,19 @@ jobs:
         run_id: ${{ github.run_id }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+    
     - uses: dev-drprasad/delete-tag-and-release@v0.2.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         delete_release: true
-        tag_name: less-v${{ env.NEWVERSION }}
-    - uses: meeDamian/github-release@2.0
+        tag_name: less-v${{ needs.build.outputs.new_version }}
+    - uses: softprops/action-gh-release@v1
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag: less-v${{ env.NEWVERSION }}
-        commitish: ${{ github.sha }}
-        gzip: false
         files: |
-          less.exe:./less.exe
-          lesskey.exe:./lesskey.exe
+          less.exe
+          lesskey.exe
         body: Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
+        tag_name: less-v${{ needs.build.outputs.new_version }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
