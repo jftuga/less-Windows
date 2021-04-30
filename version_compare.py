@@ -10,6 +10,7 @@ Compare local github version with less web site
 
 import json
 import urllib.request
+import re
 import sys
 from shared import download_less_web_page, get_latest_version_url, LESSURL, NEWFILE
 
@@ -50,7 +51,7 @@ def get_latest_local_version(page: str) -> str:
     # given less-v561.17, return 561
     release_version = newest["tag_name"][6:11]
     if release_version.endswith(".0"):
-        release_version[:3]
+        release_version = re.sub("\.0$", "", release_version)
     print(f'{release_version=}')
     return release_version
 
@@ -88,7 +89,7 @@ def main():
     print(f"Saving new version to file: {NEWFILE}")
     try:
         with open(NEWFILE, mode="w") as fp:
-            fp.write("%s.0\n" % remote_version)
+            fp.write("%s\n" % remote_version)
     except:
         print(f"Unable able to open file for writing: {NEWFILE}")
         sys.exit(50)
