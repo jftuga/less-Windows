@@ -13,7 +13,8 @@ import urllib.request
 import sys
 from shared import download_less_web_page, get_latest_version_url, LESSURL, NEWFILE
 
-LOCALURL="https://api.github.com/repos/jftuga/less-Windows/releases"
+LOCALURL = "https://api.github.com/repos/jftuga/less-Windows/releases"
+
 
 def download_local_web_page() -> str:
     """Download and return JSON from LOCALURL
@@ -27,7 +28,8 @@ def download_local_web_page() -> str:
     page = page.decode("utf-8")
     return page
 
-def get_latest_local_version(page:str) -> str:
+
+def get_latest_local_version(page: str) -> str:
     """Extract and return the lastest release version from a JSON page
        Ex: 561
     """
@@ -40,13 +42,18 @@ def get_latest_local_version(page:str) -> str:
         return "500"
 
     newest = j[0]
+    print(f'{newest["tag_name"]=}')
     # The initial version is different than future versions
-    if "v560" == newest["name"]:
+    if "v560" == newest["tag_name"]:
         return "560"
 
     # given less-v561.17, return 561
-    release_version = newest["name"][6:9]
+    release_version = newest["tag_name"][6:11]
+    if release_version.endswith(".0"):
+        release_version[:3]
+    print(f'{release_version=}')
     return release_version
+
 
 def main():
     """Return exit value 0 when a new version needs to be downloaded
@@ -65,7 +72,7 @@ def main():
         return
 
     remote_version, _ = get_latest_version_url(page)
-    if None == remote_version:
+    if remote_version is None:
         print("Unable to extract version from: %s" % (LESSURL), file=sys.stderr)
         sys.exit(40)
 
@@ -73,7 +80,7 @@ def main():
         print(f"Versions are the same: remote_version: {remote_version}   local_version: {local_version}")
         sys.exit(100)
 
-    if int(local_version) >= int(remote_version):
+    if float(local_version) >= float(remote_version):
         print(f"Local version is newer: local_version: {local_version}   remote_version: {remote_version}")
         sys.exit(120)
 
