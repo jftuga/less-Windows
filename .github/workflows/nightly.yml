@@ -10,18 +10,16 @@ on:
     
 jobs:
   build:
-    runs-on: windows-2019
-    
+    runs-on: windows-latest
+
     outputs:
       new_version: ${{ steps.get_new_version.outputs.version }}
 
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9.x'
-    - uses: ilammy/msvc-dev-cmd@v1.7.0
-    
+    - uses: ilammy/msvc-dev-cmd@v1
+
     - name: Compare versions
       run: python .\version_compare.py
     - name: Build
