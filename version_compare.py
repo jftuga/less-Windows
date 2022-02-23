@@ -57,7 +57,7 @@ def get_latest_local_version(page: str) -> str:
 
 
 def main():
-    """Return exit value 0 when a new version needs to be downloaded
+    """Write to new.txt when a new version needs to be downloaded
     """
     if not (page := download_local_web_page()):
         print("Unable to download URL: %s" % (LOCALURL))
@@ -79,7 +79,7 @@ def main():
 
     if remote_version == local_version:
         print(f"Versions are the same: remote_version: {remote_version}   local_version: {local_version}")
-        sys.exit(100)
+        return
 
     if float(local_version) >= float(remote_version):
         print(f"Local version is newer: local_version: {local_version}   remote_version: {remote_version}")

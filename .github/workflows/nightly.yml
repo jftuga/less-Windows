@@ -9,28 +9,39 @@ on:
     - cron: '0 0 * * *'
     
 jobs:
-  build:
-    runs-on: windows-latest
+  checkver:
+    runs-on: ubuntu-latest
 
     outputs:
-      new_version: ${{ steps.get_new_version.outputs.version }}
+      new_version: ${{ steps.check_new_version.outputs.new_version }}
 
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+    - name: Compare versions
+      run: python version_compare.py
+    - name: Check if new version exists
+      id: check_new_version
+      run: |
+        # If new.txt exists and is not empty
+        if [ -s "new.txt"  ]; then
+          NEW_VERSION=$(cat new.txt)
+          echo "New version is $NEW_VERSION"
+          echo ::set-output name=new_version::$NEW_VERSION
+        fi
+        
+  build:
+    runs-on: windows-latest
+    needs: checkver
+    if: ${{ needs.checkver.outputs.new_version }}
+    
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
     - uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Compare versions
-      run: python .\version_compare.py
     - name: Build
       run: python .\build.py
-      
-    - name: Get NEWVERSION
-      id: get_new_version
-      run: |
-        $env:NEWVERSION = "$(Get-Content .\new.txt)"
-        echo "New version is $env:NEWVERSION"
-        echo "::set-output name=version::$env:NEWVERSION"
     
     - name: Upload less to artifact
       uses: actions/upload-artifact@v2
@@ -44,7 +55,7 @@ jobs:
         path: lesskey.exe
 
   release:
-    needs: build
+    needs: [checkver, build]
     if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     
@@ -80,6 +91,6 @@ jobs:
           less.exe
           lesskey.exe
         body: Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
-        tag_name: less-v${{ needs.build.outputs.new_version }}
+        tag_name: less-v${{ needs.checkver.outputs.new_version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
