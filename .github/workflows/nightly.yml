@@ -61,11 +61,11 @@ jobs:
     
     steps:
     - name: Get less artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
           name: less
     - name: Get lesskey artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: lesskey
     
