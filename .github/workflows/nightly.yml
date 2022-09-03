@@ -89,7 +89,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Publish to WinGet
+  winget:
+    name: Publish to WinGet
+    needs: [checkver, release]
+    runs-on: windows-latest # action can only run on Windows
+
+    steps:
     - name: Publish less to WinGet
       uses: vedantmgoyal2009/winget-releaser@latest
       with:
