@@ -79,12 +79,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
-    - uses: dev-drprasad/delete-tag-and-release@v0.2.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        delete_release: true
-        tag_name: less-v${{ needs.build.outputs.new_version }}
     - uses: softprops/action-gh-release@v1
       with:
         files: |
@@ -94,3 +88,19 @@ jobs:
         tag_name: less-v${{ needs.checkver.outputs.new_version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Publish to WinGet
+    - name: Publish less to WinGet
+      uses: vedantmgoyal2009/winget-releaser@latest
+      with:
+        identifier: JohnTaylor.less
+        release-tag: less-v${{ needs.checkver.outputs.new_version }}
+        installers-regex: 'less\.exe$'
+        token: ${{ secrets.WINGET_TOKEN }}
+    - name: Publish lesskey to WinGet
+      uses: vedantmgoyal2009/winget-releaser@latest
+      with:
+        identifier: JohnTaylor.lesskey
+        release-tag: less-v${{ needs.checkver.outputs.new_version }}
+        installers-regex: 'lesskey\.exe$'
+        token: ${{ secrets.WINGET_TOKEN }}
