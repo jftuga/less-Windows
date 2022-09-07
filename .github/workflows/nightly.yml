@@ -102,6 +102,8 @@ jobs:
         release-tag: less-v${{ needs.checkver.outputs.new_version }}
         installers-regex: 'less\.exe$'
         token: ${{ secrets.WINGET_TOKEN }}
+    - name: Remove cloned winget-pkgs repository # Because Winget Releaser will attempt to clone it again
+      run: Remove-Item -Recurse -Force .\winget-pkgs\
     - name: Publish lesskey to WinGet
       uses: vedantmgoyal2009/winget-releaser@latest
       with:
