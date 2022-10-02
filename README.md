@@ -8,7 +8,7 @@ A stand-alone 64-bit Windows 10 binary for `less.exe` (and `lesskey.exe`) is pro
 
 ### [GitHub Actions](https://github.com/jftuga/less-Windows/actions)
 
-The actions check for new versions 3 times a week. The `GitHub Actions` builds are compiled with `Visual Studio 2019`.
+The actions check for new versions 3 times a week. The `GitHub Actions` builds are compiled with the latest version of Visual Studio.
 
 ### Winget
 
