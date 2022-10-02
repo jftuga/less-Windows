@@ -45,12 +45,12 @@ jobs:
       run: python .\build.py
     
     - name: Upload less to artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: less
         path: less.exe
     - name: Upload lesskey to artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: lesskey
         path: lesskey.exe
