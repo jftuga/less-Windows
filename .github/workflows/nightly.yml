@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4.2.0
+    - uses: actions/setup-python@v4
     - name: Compare versions
       run: python version_compare.py
     - name: Check if new version exists
@@ -38,7 +38,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4.2.0
+    - uses: actions/setup-python@v4
     - uses: ilammy/msvc-dev-cmd@v1
 
     - name: Build
