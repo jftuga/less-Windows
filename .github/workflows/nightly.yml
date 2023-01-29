@@ -79,12 +79,18 @@ jobs:
         run_id: ${{ github.run_id }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - id: extract_major_version
+      run: |
+        MAJOR_VERSION=$(echo ${{ needs.checkver.outputs.new_version }} | cut -d. -f1)
+        echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
 
     - uses: softprops/action-gh-release@v1
       with:
-        files: |
-          *.zip
-        body: Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
+        files: '*.zip'
+        body: |
+          Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
+
+          Release notes can be found [here](http://greenwoodsoftware.com/less/news.${{ steps.extract_major_version.outputs.major_version }}.html).
         tag_name: less-v${{ needs.checkver.outputs.new_version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
