@@ -1,6 +1,6 @@
 # less-Windows [![nightly](https://github.com/jftuga/less-Windows/actions/workflows/nightly.yml/badge.svg)](https://github.com/jftuga/less-Windows/actions/workflows/nightly.yml)
 
-GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows from the [less source](http://greenwoodsoftware.com/less/) via GitHub Actions. The actions check for new versions 3 times a week, and builds are compiled with the latest version of Visual Studio.
+GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows from the [less source](http://greenwoodsoftware.com/less/) via GitHub Actions. New versions are being checked daily, and builds are compiled with the latest version of Visual Studio.
 
 ## Installation
 
