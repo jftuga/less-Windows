@@ -4,7 +4,7 @@ GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows 10 
 
 ## Download
 
-A stand-alone 64-bit Windows 10 binary for `less.exe` (and `lesskey.exe`) is provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases).
+Binaries for `less.exe` (and `lesskey.exe`) are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases). Download the appropriate one for your system.
 
 ### [GitHub Actions](https://github.com/jftuga/less-Windows/actions)
 
@@ -12,7 +12,7 @@ The actions check for new versions 3 times a week. The `GitHub Actions` builds a
 
 ### Winget
 
-A new version is pushed to the upstream [winget-pkgs](https://github.com/microsoft/winget-pkgs) for every release. To install less and lesskey in Winget, run the following commands:
+A new version is pushed to the upstream [winget-pkgs](https://github.com/microsoft/winget-pkgs) for every release. To install less in Winget, run the following commands:
 
 ```powershell
 winget install JohnTaylor.less
