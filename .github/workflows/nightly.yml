@@ -97,7 +97,7 @@ jobs:
     steps:
     - uses: vedantmgoyal2009/winget-releaser@v1
       with:
-        identifier: JohnTaylor.less
+        identifier: jftuga.less
         version: ${{ needs.checkver.outputs.new_version }}
         release-tag: less-v${{ needs.checkver.outputs.new_version }}
         installers-regex: '\.zip$'
