@@ -8,11 +8,10 @@ Binaries for `less.exe` (and `lesskey.exe`) are provided on the [Releases Page](
 
 ### Winget
 
-A new version is pushed to the upstream [winget-pkgs](https://github.com/microsoft/winget-pkgs) for every release. To install less in Winget, run the following commands:
+A new version is pushed to the upstream [winget-pkgs](https://github.com/microsoft/winget-pkgs) for every release:
 
 ```powershell
-winget install JohnTaylor.less
-winget install JohnTaylor.lesskey # already installed in the JohnTaylor.less package if you have the dependencies feature enabled
+winget install jftuga.less
 ```
 
 ### Chocolatey
