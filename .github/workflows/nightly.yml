@@ -101,7 +101,7 @@ jobs:
     runs-on: windows-latest # action can only run on Windows
 
     steps:
-    - uses: vedantmgoyal2009/winget-releaser@v1
+    - uses: vedantmgoyal2009/winget-releaser@v2
       with:
         identifier: jftuga.less
         version: ${{ needs.checkver.outputs.new_version }}
