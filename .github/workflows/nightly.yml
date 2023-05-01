@@ -92,6 +92,7 @@ jobs:
 
           Release notes can be found [here](http://greenwoodsoftware.com/less/news.${{ steps.extract_major_version.outputs.major_version }}.html).
         tag_name: less-v${{ needs.checkver.outputs.new_version }}
+        discussion_category_name: Announcements
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
