@@ -50,7 +50,7 @@ jobs:
       run: python .\build.py
 
     - name: Upload less to artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: less-${{ matrix.arch }}
         path: |
