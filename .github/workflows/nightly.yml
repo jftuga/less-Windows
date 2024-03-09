@@ -85,7 +85,7 @@ jobs:
         MAJOR_VERSION=$(echo ${{ needs.checkver.outputs.new_version }} | cut -d. -f1)
         echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
 
-    - uses: softprops/action-gh-release@v1
+    - uses: softprops/action-gh-release@v2
       with:
         files: '*.zip'
         body: |
