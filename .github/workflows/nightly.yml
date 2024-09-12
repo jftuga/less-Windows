@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: vedantmgoyal2009/winget-releaser@v2
+    - uses: vedantmgoyal9/winget-releaser@main
       with:
         identifier: jftuga.less
         version: ${{ needs.checkver.outputs.new_version }}
