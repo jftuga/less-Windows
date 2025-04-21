@@ -51,7 +51,7 @@ def get_latest_local_version(page: str) -> str:
     # given less-v561.17, return 561
     release_version = newest["tag_name"][6:11]
     if release_version.endswith(".0"):
-        release_version = re.sub("\.0$", "", release_version)
+        release_version = re.sub(r"\.0$", "", release_version)
     print(f'{release_version=}')
     return release_version
 
