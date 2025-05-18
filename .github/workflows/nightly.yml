@@ -45,6 +45,7 @@ jobs:
     - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.arch != 'x64' && 'amd64_' || '' }}${{ matrix.arch }}
+        sdk: ${{ matrix.arch == 'arm' && '10.0.22621.0' || '' }}
 
     - name: Build
       run: python .\build.py
