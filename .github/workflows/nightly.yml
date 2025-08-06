@@ -68,7 +68,7 @@ jobs:
 
     steps:
     - name: Get all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
     - name: Zip each artifact
       run: find . -type d ! -path . -execdir zip -9 -rj "{}.zip" "{}" \;
 
