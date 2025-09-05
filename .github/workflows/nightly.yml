@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
     - name: Compare versions
       run: python version_compare.py
     - name: Check if new version exists
@@ -41,7 +41,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
     - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.arch != 'x64' && 'amd64_' || '' }}${{ matrix.arch }}
