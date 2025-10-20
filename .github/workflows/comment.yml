@@ -1,0 +1,26 @@
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        required: true
+      owner:
+        required: true
+      repo:
+        required: true
+      body:
+        required: true
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.WINGET_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.inputs.issue_number }},
+              owner: '${{ github.event.inputs.owner }}',
+              repo: '${{ github.event.inputs.repo }}',
+              body: '${{ github.event.inputs.body }}'
+            })
