@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: Run the build job even when no new version is detected
+        type: boolean
+        default: false
 
 jobs:
   checkver:
@@ -34,7 +39,7 @@ jobs:
   build:
     runs-on: windows-${{ matrix.arch == 'arm' && '2022' || 'latest' }}
     needs: checkver
-    if: ${{ needs.checkver.outputs.new_version }}
+    if: ${{ needs.checkver.outputs.new_version || (github.event_name == 'workflow_dispatch' && inputs.force_build) }}
     strategy:
       matrix:
         arch: [x64, x86, arm64, arm]
@@ -60,7 +65,7 @@ jobs:
 
   release:
     needs: [checkver, build]
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && needs.checkver.outputs.new_version && !(github.event_name == 'workflow_dispatch' && inputs.force_build) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
