@@ -22,7 +22,7 @@ jobs:
       new_version: ${{ steps.check_new_version.outputs.new_version }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: actions/setup-python@v6
     - name: Compare versions
       run: python version_compare.py
@@ -45,7 +45,7 @@ jobs:
         arch: [x64, x86, arm64, arm]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: actions/setup-python@v6
     - uses: ilammy/msvc-dev-cmd@v1
       with:
