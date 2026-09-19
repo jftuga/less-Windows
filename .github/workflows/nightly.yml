@@ -76,15 +76,13 @@ jobs:
     - name: Zip each artifact
       run: find . -type d ! -path . -execdir zip -9 -rj "{}.zip" "{}" \;
 
-    - uses: octokit/request-action@v2.x
-      id: get_workflow_runtime
-      with:
-        route: GET /repos/{owner}/{repo}/actions/runs/{run_id}
-        owner: ${{ github.repository_owner }}
-        repo: less-Windows
-        run_id: ${{ github.run_id }}
+    - id: get_workflow_runtime
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+          --jq '"updated_at=\(.updated_at)"' >> "$GITHUB_OUTPUT"
+
     - id: extract_major_version
       run: |
         MAJOR_VERSION=$(echo ${{ needs.checkver.outputs.new_version }} | cut -d. -f1)
@@ -94,7 +92,7 @@ jobs:
       with:
         files: '*.zip'
         body: |
-          Built with GitHub Actions at ${{ fromJson(steps.get_workflow_runtime.outputs.data).updated_at }}
+          Built with GitHub Actions at ${{ steps.get_workflow_runtime.outputs.updated_at }}
 
           Release notes can be found [here](http://greenwoodsoftware.com/less/news.${{ steps.extract_major_version.outputs.major_version }}.html).
         tag_name: less-v${{ needs.checkver.outputs.new_version }}
