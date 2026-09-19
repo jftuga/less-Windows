@@ -4,7 +4,7 @@ GNU [less](https://en.wikipedia.org/wiki/Less_\(Unix\)) compiled for Windows fro
 
 ## Installation
 
-Binaries for `less.exe` (and `lesskey.exe`) are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases). Download the appropriate one for your system. If you prefer to install less via a package manager, you can choose one of the following options:
+Binaries for `less.exe` are provided on the [Releases Page](https://github.com/jftuga/less-Windows/releases). Download the appropriate one for your system. If you prefer to install less via a package manager, you can choose one of the following options:
 
 ### Winget
 

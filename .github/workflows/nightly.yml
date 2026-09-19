@@ -59,9 +59,8 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: less-${{ matrix.arch }}
-        path: |
-          less.exe
-          lesskey.exe
+        path: less.exe
+        if-no-files-found: error
 
   release:
     needs: [checkver, build]

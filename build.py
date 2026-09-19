@@ -6,7 +6,7 @@ builder.py
 May-13-2020
 
 Download and compile GNU less with Visual Studio
-less.exe and lesskey.exe are created
+less.exe is created
 """
 
 import os
@@ -71,10 +71,12 @@ def create_compile_batchfile(archive_dest: str):
     try:
         with open(bat, "w") as fp:
             fp.write("@echo off\n")
-            fp.write("cd %s\n" % (archive_dest))
+            fp.write('cd /d "%s"\n' % (archive_dest))
+            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
             fp.write("nmake /f Makefile.wnm\n")
+            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
             fp.write("copy /y less.exe ..\n")
-            fp.write("copy /y lesskey.exe ..\n")
+            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
     except:
         return False
 
