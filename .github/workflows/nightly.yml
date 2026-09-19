@@ -47,7 +47,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-python@v7
-    - uses: TheMrMilchmann/setup-msvc-dev@v1
+    - uses: TheMrMilchmann/setup-msvc-dev@v4
       with:
         arch: ${{ matrix.arch != 'x64' && 'amd64_' || '' }}${{ matrix.arch }}
         sdk: ${{ matrix.arch == 'arm' && '10.0.22621.0' || '' }}
