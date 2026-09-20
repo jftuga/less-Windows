@@ -8,7 +8,7 @@
 # ]
 # ///
 
-"""Build an official stable less release in a Visual Studio Developer shell."""
+"""Build an official less release in a Visual Studio Developer shell (stable by default)."""
 
 import argparse
 from dataclasses import asdict, dataclass
@@ -40,6 +40,7 @@ class Release:
     url: str
     notes_url: str
     signature_url: str
+    beta: bool = False
 
 
 def feed_link(entry, relation: str, media_type: str) -> str:
@@ -59,35 +60,46 @@ def feed_link(entry, relation: str, media_type: str) -> str:
     raise ValueError(f"Missing {media_type} {relation} link in {entry.get('id', 'feed entry')}")
 
 
-def select_release(content: bytes, requested: str | None = None) -> Release:
+def parse_releases(content: bytes) -> list[Release]:
     feed = feedparser.parse(content)
     if feed.get("bozo") or feed.get("version") != "atom10":
         raise ValueError("Upstream returned an invalid Atom feed")
     releases = {}
     for entry in feed.entries:
-        if not any(tag.get("term") == "production" for tag in entry.get("tags", [])):
+        channels = {tag.get("term") for tag in entry.get("tags", [])} & {"production", "beta"}
+        if not channels:
             continue
-        match = re.fullmatch(rf"data:less-({VERSION_PATTERN})-production", entry.get("id", ""))
-        if not match:
-            raise ValueError(f"Unrecognized stable release ID: {entry.get('id', '')}")
+        match = re.fullmatch(rf"data:less-({VERSION_PATTERN})-(production|beta)", entry.get("id", ""))
+        if not match or channels != {match[2]}:
+            raise ValueError(f"Unrecognized release ID or category: {entry.get('id', '')}")
         version = match[1]
         release = Release(
             version,
             feed_link(entry, "alternate", "application/gzip"),
             feed_link(entry, "related", "text/html"),
             feed_link(entry, "related", "application/pgp-signature"),
+            beta=match[2] == "beta",
         )
-        if version in releases and releases[version] != release:
-            raise ValueError(f"Conflicting feed entries for version {version}")
-        releases[version] = release
+        key = (version, release.beta)
+        if key in releases and releases[key] != release:
+            raise ValueError(f"Conflicting feed entries for {match[2]} version {version}")
+        releases[key] = release
     if not releases:
-        raise ValueError("The Atom feed contains no stable releases")
+        raise ValueError("The Atom feed contains no releases")
+    return list(releases.values())
+
+
+def select_release(content: bytes, requested: str | None = None, *, beta: bool = False) -> Release:
+    releases = {release.version: release for release in parse_releases(content) if release.beta == beta}
+    channel = "beta" if beta else "stable"
+    if not releases:
+        raise ValueError(f"The Atom feed contains no {channel} releases")
     if requested is not None:
         if requested not in releases:
             available = ", ".join(sorted(releases, key=Version, reverse=True))
             raise ValueError(
-                f"Stable version {requested!r} is not in the current feed. "
-                f"Available stable versions: {available}"
+                f"{channel.capitalize()} version {requested!r} is not in the current feed. "
+                f"Available {channel} versions: {available}"
             )
         return releases[requested]
     return releases[max(releases, key=Version)]
@@ -187,6 +199,7 @@ def build_release(
         source_root = workspace / "source"
         with tarfile.open(archive, "r:gz") as source:
             source.extractall(source_root, filter="data")
+        # Upstream beta archives also use less-VERSION as their source directory.
         source_dir = source_root / f"less-{release.version}"
         if not (source_dir / "Makefile.wnm").is_file():
             raise ValueError(f"Source archive does not contain less-{release.version}/Makefile.wnm")
@@ -201,21 +214,29 @@ def build_release(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("version", nargs="?", help="stable version in the current feed (default: latest)")
-    parser.add_argument("--discover", action="store_true", help="print release JSON without building")
+    parser.add_argument("version", nargs="?", help="version in the selected feed channel (default: latest)")
+    parser.add_argument("--beta", action="store_true", help="select a beta release instead of stable")
+    discovery = parser.add_mutually_exclusive_group()
+    discovery.add_argument("--discover", action="store_true", help="print selected release JSON without building")
+    discovery.add_argument("--discover-all", action="store_true", help="print all feed releases as JSON without building")
     parser.add_argument(
         "--no-verify", action="store_true", help="skip package signature verification (GnuPG not required)"
     )
     args = parser.parse_args()
     if args.version is not None and not re.fullmatch(VERSION_PATTERN, args.version):
-        parser.error("version must be a stable numeric version such as 710")
+        parser.error("version must be a numeric version such as 710")
+    if args.discover_all and (args.version is not None or args.beta):
+        parser.error("--discover-all cannot be combined with a version or --beta")
     try:
-        if not args.discover:
+        if not (args.discover or args.discover_all):
             check_prerequisites(verify=not args.no_verify)
         with httpx.Client(follow_redirects=True, timeout=60) as client:
             response = client.get(FEED_URL)
             response.raise_for_status()
-            release = select_release(response.content, args.version)
+            if args.discover_all:
+                print(json.dumps([asdict(release) for release in parse_releases(response.content)]))
+                return 0
+            release = select_release(response.content, args.version, beta=args.beta)
             if args.discover:
                 print(json.dumps(asdict(release)))
             else:

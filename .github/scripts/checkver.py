@@ -6,7 +6,7 @@
 # ]
 # ///
 
-"""Discover the upstream release and set GitHub Actions build/release outputs."""
+"""Plan upstream builds, new GitHub releases, and asset-preserving promotions."""
 
 import json
 import os
@@ -22,54 +22,136 @@ ROOT = Path(__file__).resolve().parents[2]
 VERSION_PATTERN = r"[0-9]+(?:\.[0-9]+)*"
 
 
-def published_version(client: httpx.Client, repository: str, api_url: str) -> str | None:
-    response = client.get(f"{api_url.rstrip('/')}/repos/{repository}/releases/latest")
-    if response.status_code == 404:
-        return None
-    response.raise_for_status()
-    tag = response.json().get("tag_name", "")
-    match = re.fullmatch(rf"(?:less-v|v)({VERSION_PATTERN})", tag) if isinstance(tag, str) else None
-    if not match:
-        raise ValueError(f"Unsupported repository release tag: {tag}")
-    return match[1]
+def published_releases(client: httpx.Client, repository: str, api_url: str) -> list[dict]:
+    releases = []
+    page = 1
+    while True:
+        response = client.get(
+            f"{api_url.rstrip('/')}/repos/{repository}/releases",
+            params={"per_page": 100, "page": page},
+        )
+        response.raise_for_status()
+        batch = response.json()
+        if not isinstance(batch, list) or any(not isinstance(item, dict) for item in batch):
+            raise ValueError("Invalid GitHub releases response")
+        releases.extend(batch)
+        if len(batch) < 100:
+            return releases
+        page += 1
 
 
 def build_outputs(
-    upstream: dict,
-    published: str | None,
+    upstream: list[dict],
+    published: list[dict],
     event_name: str,
     ref: str,
     default_branch: str,
     force_build: bool,
 ) -> dict[str, str]:
-    version = upstream.get("version")
-    if not isinstance(version, str) or not re.fullmatch(VERSION_PATTERN, version):
-        raise ValueError(f"Invalid upstream version: {version}")
-    notes_url = upstream.get("notes_url")
-    if not isinstance(notes_url, str) or not notes_url or "\n" in notes_url or "\r" in notes_url:
-        raise ValueError("Invalid upstream release notes URL")
+    if not isinstance(upstream, list) or not upstream:
+        raise ValueError("No upstream releases discovered")
+    channels = {False: {}, True: {}}
+    for release in upstream:
+        if not isinstance(release, dict):
+            raise ValueError("Invalid upstream release")
+        version = release.get("version")
+        if not isinstance(version, str) or not re.fullmatch(VERSION_PATTERN, version):
+            raise ValueError(f"Invalid upstream version: {version}")
+        notes_url = release.get("notes_url")
+        if not isinstance(notes_url, str) or not notes_url or "\n" in notes_url or "\r" in notes_url:
+            raise ValueError("Invalid upstream release notes URL")
+        if type(release.get("beta")) is not bool:
+            raise ValueError("Invalid upstream beta flag")
+        channels[release["beta"]].setdefault(Version(version), release)
+    stable = channels[False]
+    if not stable:
+        raise ValueError("No upstream production release discovered")
+    latest_stable = max(stable)
 
-    newer = published is None or Version(version) > Version(published)
-    forced = event_name == "workflow_dispatch" and force_build
-    should_build = event_name in {"pull_request", "push"} or forced or newer
-    should_release = (
-        newer
-        and ref == f"refs/heads/{default_branch}"
-        and event_name != "pull_request"
-        and not forced
+    existing = {}
+    for release in published:
+        tag = release.get("tag_name", "")
+        match = re.fullmatch(rf"(?:less-v|v)({VERSION_PATTERN})", tag) if isinstance(tag, str) else None
+        if not match:
+            continue
+        if type(release.get("draft")) is not bool or type(release.get("prerelease")) is not bool:
+            raise ValueError(f"Invalid GitHub release flags: {tag}")
+        existing.setdefault(Version(match[1]), []).append(release)
+    published_stable = [
+        version
+        for version, releases in existing.items()
+        if any(not item["draft"] and not item["prerelease"] for item in releases)
+    ]
+    newest_published = max(published_stable, default=None)
+
+    def metadata(release):
+        version = Version(release["version"])
+        return {
+            "version": release["version"],
+            "beta": release["beta"],
+            "promote": False,
+            "notes_url": release["notes_url"],
+            "tag_name": f"less-v{release['version']}",
+            "make_latest": str(
+                not release["beta"]
+                and version == latest_stable
+                and (newest_published is None or version >= newest_published)
+            ).lower(),
+        }
+
+    publish = (
+        ref == f"refs/heads/{default_branch}"
+        and event_name in {"push", "schedule", "workflow_dispatch"}
+        and not force_build
     )
+    validate = event_name in {"push", "pull_request"} or force_build
+    releases = []
+    if publish:
+        for version in sorted(stable):
+            matches = existing.get(version, [])
+            for item in matches:
+                if item["draft"] or not item["prerelease"]:
+                    continue
+                promotion = metadata(stable[version])
+                promotion.update(
+                    promote=True,
+                    tag_name=item["tag_name"],
+                    name=(item.get("name") or item["tag_name"]).removesuffix(" beta"),
+                )
+                releases.append(promotion)
+
+    selected = [stable[latest_stable]]
+    if channels[True]:
+        latest_beta = max(channels[True])
+        if latest_beta > latest_stable:
+            selected.append(channels[True][latest_beta])
+    builds = []
+    for release in selected:
+        version = Version(release["version"])
+        matches = existing.get(version, [])
+        if any(item["draft"] for item in matches):
+            continue
+        candidate = metadata(release)
+        newer = newest_published is None or version > newest_published
+        missing = not matches and newer
+        if validate or missing:
+            builds.append(candidate)
+        if publish and missing:
+            releases.append(candidate)
+
     return {
-        "version": version,
-        "notes_url": notes_url,
-        "should_build": str(should_build).lower(),
-        "should_release": str(should_release).lower(),
+        name: json.dumps(items, separators=(",", ":"))
+        for name, items in {
+            "builds": builds,
+            "releases": releases,
+        }.items()
     }
 
 
 def main() -> int:
     try:
         result = subprocess.run(
-            ["uv", "run", "--locked", str(ROOT / "build.py"), "--discover"],
+            ["uv", "run", "--locked", str(ROOT / "build.py"), "--discover-all"],
             check=True,
             stdout=subprocess.PIPE,
             text=True,
@@ -85,7 +167,7 @@ def main() -> int:
             },
             timeout=60,
         ) as client:
-            published = published_version(
+            published = published_releases(
                 client,
                 os.environ["GITHUB_REPOSITORY"],
                 os.environ.get("GITHUB_API_URL", "https://api.github.com"),
@@ -98,10 +180,8 @@ def main() -> int:
             event["repository"]["default_branch"],
             os.environ.get("FORCE_BUILD") == "true",
         )
-        print(
-            f"Upstream: {outputs['version']}; published: {published or 'none'}; "
-            f"build: {outputs['should_build']}; release: {outputs['should_release']}"
-        )
+        for name, value in outputs.items():
+            print(f"{name}: {value}")
         with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
             output.writelines(f"{name}={value}\n" for name, value in outputs.items())
     except (httpx.HTTPError, OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:

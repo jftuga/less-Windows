@@ -23,10 +23,8 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      version: ${{ steps.check_new_version.outputs.version }}
-      should_build: ${{ steps.check_new_version.outputs.should_build }}
-      should_release: ${{ steps.check_new_version.outputs.should_release }}
-      notes_url: ${{ steps.check_new_version.outputs.notes_url }}
+      builds: ${{ steps.check_new_version.outputs.builds }}
+      releases: ${{ steps.check_new_version.outputs.releases }}
 
     steps:
     - uses: actions/checkout@v7
@@ -46,9 +44,10 @@ jobs:
   build:
     runs-on: windows-${{ matrix.arch == 'arm' && '2022' || 'latest' }}
     needs: checkver
-    if: ${{ needs.checkver.outputs.should_build == 'true' }}
+    if: ${{ needs.checkver.outputs.builds != '[]' }}
     strategy:
       matrix:
+        release: ${{ fromJSON(needs.checkver.outputs.builds) }}
         arch: [x64, x86, arm64, arm]
 
     steps:
@@ -65,59 +64,90 @@ jobs:
 
     - name: Build
       env:
-        LESS_VERSION: ${{ needs.checkver.outputs.version }}
-      run: uv run --locked .\build.py $env:LESS_VERSION
+        LESS_VERSION: ${{ matrix.release.version }}
+        LESS_BETA: ${{ matrix.release.beta }}
+      run: |
+        $buildArguments = @('--locked', '.\build.py', $env:LESS_VERSION)
+        if ($env:LESS_BETA -eq 'true') { $buildArguments += '--beta' }
+        uv run @buildArguments
 
     - name: Upload less to artifact
       uses: actions/upload-artifact@v7
       with:
-        name: less-${{ matrix.arch }}
+        name: less-${{ matrix.release.version }}-${{ matrix.arch }}
         path: less.exe
         if-no-files-found: error
 
   release:
     needs: [checkver, build]
-    if: ${{ needs.checkver.outputs.should_release == 'true' }}
+    # Promotions can run even when builds are skipped or fail.
+    if: ${{ !cancelled() && needs.checkver.result == 'success' && needs.checkver.outputs.releases != '[]' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ${{ fromJSON(needs.checkver.outputs.releases) }}
     permissions:
       contents: write
       discussions: write
 
     steps:
-    - name: Get all artifacts
+    - name: Get version artifacts
+      if: ${{ !matrix.release.promote && needs.build.result == 'success' }}
       uses: actions/download-artifact@v8
+      with:
+        pattern: less-${{ matrix.release.version }}-*
+        path: artifacts
     - name: Zip each artifact
-      run: find . -type d ! -path . -execdir zip -9 -rj "{}.zip" "{}" \;
+      if: ${{ !matrix.release.promote && needs.build.result == 'success' }}
+      env:
+        LESS_VERSION: ${{ matrix.release.version }}
+      run: |
+        for arch in x64 x86 arm64 arm; do
+          zip -9 -j "less-${arch}.zip" "artifacts/less-${LESS_VERSION}-${arch}/less.exe"
+        done
 
     - id: get_workflow_runtime
+      if: ${{ !matrix.release.promote && needs.build.result == 'success' }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
           --jq '"updated_at=\(.updated_at)"' >> "$GITHUB_OUTPUT"
 
-    - uses: softprops/action-gh-release@v3
+    - name: Create release
+      if: ${{ !matrix.release.promote && needs.build.result == 'success' }}
+      uses: softprops/action-gh-release@v3
       with:
         files: '*.zip'
         body: |
           Built with GitHub Actions at ${{ steps.get_workflow_runtime.outputs.updated_at }}
 
-          Release notes can be found [here](${{ needs.checkver.outputs.notes_url }}).
-        tag_name: less-v${{ needs.checkver.outputs.version }}
-        discussion_category_name: Announcements
+          Release notes can be found [here](${{ matrix.release.notes_url }}).
+        tag_name: ${{ matrix.release.tag_name }}
+        name: ${{ matrix.release.tag_name }}${{ matrix.release.beta && ' beta' || '' }}
+        prerelease: ${{ matrix.release.beta }}
+        make_latest: ${{ matrix.release.make_latest }}
+        discussion_category_name: ${{ !matrix.release.beta && 'Announcements' || '' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  winget:
-    name: Publish to WinGet
-    needs: [checkver, release]
-    runs-on: ubuntu-latest
+    - name: Promote existing beta
+      if: ${{ matrix.release.promote }}
+      uses: softprops/action-gh-release@v3
+      with:
+        tag_name: ${{ matrix.release.tag_name }}
+        name: ${{ matrix.release.name }}
+        prerelease: false
+        make_latest: ${{ matrix.release.make_latest }}
+        discussion_category_name: Announcements
 
-    steps:
-    - uses: vedantmgoyal9/winget-releaser@main
+    - name: Publish to WinGet
+      if: ${{ !matrix.release.beta && (matrix.release.promote || needs.build.result == 'success') }}
+      uses: vedantmgoyal9/winget-releaser@main
       with:
         identifier: jftuga.less
-        version: ${{ needs.checkver.outputs.version }}
-        release-tag: less-v${{ needs.checkver.outputs.version }}
+        version: ${{ matrix.release.version }}
+        release-tag: ${{ matrix.release.tag_name }}
         installers-regex: '\.zip$'
         token: ${{ secrets.WINGET_TOKEN }}
