@@ -1,5 +1,4 @@
-less-*/
-less*.zip
-compile.bat
-download.html
+less.exe
 __pycache__/
+*.py[cod]
+.venv/

@@ -10,50 +10,62 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: Run the build job even when no new version is detected
+        description: Build workflow artifacts only, even when no new version is detected
         type: boolean
         default: false
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   checkver:
     runs-on: ubuntu-latest
 
     outputs:
-      new_version: ${{ steps.check_new_version.outputs.new_version }}
+      version: ${{ steps.check_new_version.outputs.version }}
+      should_build: ${{ steps.check_new_version.outputs.should_build }}
+      should_release: ${{ steps.check_new_version.outputs.should_release }}
+      notes_url: ${{ steps.check_new_version.outputs.notes_url }}
 
     steps:
     - uses: actions/checkout@v7
-    - uses: actions/setup-python@v7
-    - name: Compare versions
-      run: python version_compare.py
-    - name: Check if new version exists
+    - uses: astral-sh/setup-uv@v10.1.0
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          build.py.lock
+          .github/scripts/checkver.py.lock
+    - name: Discover and compare versions
       id: check_new_version
-      run: |
-        # If new.txt exists and is not empty
-        if [ -s "new.txt"  ]; then
-          NEW_VERSION=$(cat new.txt)
-          echo "New version is $NEW_VERSION"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+        FORCE_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_build }}
+      run: uv run --locked .github/scripts/checkver.py
 
   build:
     runs-on: windows-${{ matrix.arch == 'arm' && '2022' || 'latest' }}
     needs: checkver
-    if: ${{ needs.checkver.outputs.new_version || (github.event_name == 'workflow_dispatch' && inputs.force_build) }}
+    if: ${{ needs.checkver.outputs.should_build == 'true' }}
     strategy:
       matrix:
         arch: [x64, x86, arm64, arm]
 
     steps:
     - uses: actions/checkout@v7
-    - uses: actions/setup-python@v7
+    - uses: astral-sh/setup-uv@v10.1.0
+      with:
+        enable-cache: true
+        cache-dependency-glob: build.py.lock
     - uses: TheMrMilchmann/setup-msvc-dev@v4
       with:
         arch: ${{ matrix.arch != 'x64' && 'amd64_' || '' }}${{ matrix.arch }}
         sdk: ${{ matrix.arch == 'arm' && '10.0.22621.0' || '' }}
 
     - name: Build
-      run: python .\build.py
+      env:
+        LESS_VERSION: ${{ needs.checkver.outputs.version }}
+      run: uv run --locked .\build.py $env:LESS_VERSION
 
     - name: Upload less to artifact
       uses: actions/upload-artifact@v7
@@ -64,7 +76,7 @@ jobs:
 
   release:
     needs: [checkver, build]
-    if: ${{ github.event_name != 'pull_request' && needs.checkver.outputs.new_version && !(github.event_name == 'workflow_dispatch' && inputs.force_build) }}
+    if: ${{ needs.checkver.outputs.should_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -83,19 +95,14 @@ jobs:
         gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
           --jq '"updated_at=\(.updated_at)"' >> "$GITHUB_OUTPUT"
 
-    - id: extract_major_version
-      run: |
-        MAJOR_VERSION=$(echo ${{ needs.checkver.outputs.new_version }} | cut -d. -f1)
-        echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
-
     - uses: softprops/action-gh-release@v3
       with:
         files: '*.zip'
         body: |
           Built with GitHub Actions at ${{ steps.get_workflow_runtime.outputs.updated_at }}
 
-          Release notes can be found [here](http://greenwoodsoftware.com/less/news.${{ steps.extract_major_version.outputs.major_version }}.html).
-        tag_name: less-v${{ needs.checkver.outputs.new_version }}
+          Release notes can be found [here](${{ needs.checkver.outputs.notes_url }}).
+        tag_name: less-v${{ needs.checkver.outputs.version }}
         discussion_category_name: Announcements
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -109,7 +116,7 @@ jobs:
     - uses: vedantmgoyal9/winget-releaser@main
       with:
         identifier: jftuga.less
-        version: ${{ needs.checkver.outputs.new_version }}
-        release-tag: less-v${{ needs.checkver.outputs.new_version }}
+        version: ${{ needs.checkver.outputs.version }}
+        release-tag: less-v${{ needs.checkver.outputs.version }}
         installers-regex: '\.zip$'
         token: ${{ secrets.WINGET_TOKEN }}

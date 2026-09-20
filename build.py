@@ -1,120 +1,171 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "feedparser>=6.0.12,<7",
+#     "httpx>=0.28.1,<1",
+#     "packaging>=25,<27",
+# ]
+# ///
 
-r"""
-builder.py
--John Taylor
-May-13-2020
+"""Build an official stable less release in a Visual Studio Developer shell."""
 
-Download and compile GNU less with Visual Studio
-less.exe is created
-"""
-
+import argparse
+from dataclasses import asdict, dataclass
+import json
 import os
-import os.path
+from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
-import time
-import urllib.request
-import zipfile
-from shared import download_less_web_page, get_latest_version_url, LESSURL
+import tarfile
+import tempfile
+from urllib.parse import urlsplit
+
+import feedparser
+import httpx
+from packaging.version import Version
+
+FEED_URL = "https://greenwoodsoftware.com/less/feed/"
+VERSION_PATTERN = r"[0-9]+(?:\.[0-9]+)*"
 
 
-def download_and_save(url: str) -> bool:
-    """Download the less .zip file and save it to the current directory
-    """
+@dataclass(frozen=True)
+class Release:
+    version: str
+    url: str
+    notes_url: str
 
-    # something like less-561.zip
-    archive = url.split("/")[-1]
-    if os.path.exists(archive):
-        sz = os.stat(archive).st_size
-        print("File already exists: %s with size: %d" % (archive, sz))
-        return archive
 
+def feed_link(entry, relation: str, media_type: str) -> str:
+    for link in entry.get("links", []):
+        if link.get("rel") == relation and link.get("type") == media_type:
+            url = link.get("href", "")
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname not in {"greenwoodsoftware.com", "www.greenwoodsoftware.com"}
+                or not parsed.path.startswith("/less/")
+                or parsed.username is not None
+                or parsed.password is not None
+            ):
+                raise ValueError(f"Unexpected upstream URL in feed: {url}")
+            return url
+    raise ValueError(f"Missing {media_type} {relation} link in {entry.get('id', 'feed entry')}")
+
+
+def select_release(content: bytes, requested: str | None = None) -> Release:
+    feed = feedparser.parse(content)
+    if feed.get("bozo") or feed.get("version") != "atom10":
+        raise ValueError("Upstream returned an invalid Atom feed")
+    releases = {}
+    for entry in feed.entries:
+        if not any(tag.get("term") == "production" for tag in entry.get("tags", [])):
+            continue
+        match = re.fullmatch(rf"data:less-({VERSION_PATTERN})-production", entry.get("id", ""))
+        if not match:
+            raise ValueError(f"Unrecognized stable release ID: {entry.get('id', '')}")
+        version = match[1]
+        release = Release(
+            version,
+            feed_link(entry, "alternate", "application/gzip"),
+            feed_link(entry, "related", "text/html"),
+        )
+        if version in releases and releases[version] != release:
+            raise ValueError(f"Conflicting feed entries for version {version}")
+        releases[version] = release
+    if not releases:
+        raise ValueError("The Atom feed contains no stable releases")
+    if requested is not None:
+        if requested not in releases:
+            available = ", ".join(sorted(releases, key=Version, reverse=True))
+            raise ValueError(
+                f"Stable version {requested!r} is not in the current feed. "
+                f"Available stable versions: {available}"
+            )
+        return releases[requested]
+    return releases[max(releases, key=Version)]
+
+
+def check_prerequisites() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("Building less requires Windows and a Visual Studio Developer shell.")
+    missing = [name for name in ("cl.exe", "link.exe", "nmake.exe") if not shutil.which(name)]
+    missing += [name for name in ("INCLUDE", "LIB") if not os.environ.get(name)]
+    help_text = (
+        "Open a Visual Studio Developer Command Prompt or Developer PowerShell "
+        "configured for your target architecture, then run uv run build.py again. "
+        "Install the Visual Studio C++ build tools and a Windows SDK if needed."
+    )
+    if missing:
+        raise RuntimeError(f"Missing build prerequisites: {', '.join(missing)}.\n{help_text}")
+    # A compile/link probe catches an incomplete SDK or a mismatched toolchain before downloading.
+    with tempfile.TemporaryDirectory(prefix="less-prerequisites-") as directory:
+        probe = Path(directory) / "probe.c"
+        probe.write_text("#include <windows.h>\nint main(void) { return 0; }\n", encoding="ascii")
+        result = subprocess.run(
+            ["cl.exe", "/nologo", "probe.c", "/link", "user32.lib", "shell32.lib"],
+            cwd=directory,
+            capture_output=True,
+            text=True,
+            errors="replace",
+        )
+    if result.returncode:
+        raise RuntimeError(
+            f"The Visual Studio compiler/SDK check failed:\n"
+            f"{result.stdout}{result.stderr}\n{help_text}"
+        )
+
+
+def build_release(client: httpx.Client, release: Release, destination: Path) -> None:
+    with tempfile.TemporaryDirectory(prefix=f"less-{release.version}-") as directory:
+        workspace = Path(directory)
+        archive = workspace / "source.tar.gz"
+        print(f"Downloading less {release.version}: {release.url}", flush=True)
+        with client.stream("GET", release.url) as response:
+            response.raise_for_status()
+            with archive.open("wb") as output:
+                for chunk in response.iter_bytes():
+                    output.write(chunk)
+        source_root = workspace / "source"
+        with tarfile.open(archive, "r:gz") as source:
+            source.extractall(source_root, filter="data")
+        source_dir = source_root / f"less-{release.version}"
+        if not (source_dir / "Makefile.wnm").is_file():
+            raise ValueError(f"Source archive does not contain less-{release.version}/Makefile.wnm")
+        print(f"Building less {release.version}...", flush=True)
+        subprocess.run(["nmake.exe", "/nologo", "/f", "Makefile.wnm"], cwd=source_dir, check=True)
+        executable = source_dir / "less.exe"
+        if not executable.is_file() or executable.stat().st_size == 0:
+            raise RuntimeError("The build did not produce less.exe")
+        shutil.copy2(executable, destination)
+    print(f"Built less {release.version}: {destination}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("version", nargs="?", help="stable version in the current feed (default: latest)")
+    parser.add_argument("--discover", action="store_true", help="print release JSON without building")
+    args = parser.parse_args()
+    if args.version is not None and not re.fullmatch(VERSION_PATTERN, args.version):
+        parser.error("version must be a stable numeric version such as 710")
     try:
-        urllib.request.urlretrieve(url, archive)
-    except:
-        return False
-
-    return archive
-
-
-def extract_archive(archive: str) -> str:
-    """Unzip the archive file, remove preexisting directory
-    """
-
-    # given "less-561.zip", return "less-561
-    zip_dest = os.path.splitext(archive)[0]
-
-    if os.path.exists(zip_dest):
-        print("Removing preexisting directory: %s" % (zip_dest))
-        try:
-            shutil.rmtree(zip_dest)
-            time.sleep(1)
-        except:
-            return False
-    try:
-        with zipfile.ZipFile(archive, "r") as z:
-            z.extractall(".")
-    except:
-        return False
-
-    return zip_dest
+        if not args.discover:
+            check_prerequisites()
+        with httpx.Client(follow_redirects=True, timeout=60) as client:
+            response = client.get(FEED_URL)
+            response.raise_for_status()
+            release = select_release(response.content, args.version)
+            if args.discover:
+                print(json.dumps(asdict(release)))
+            else:
+                build_release(client, release, Path.cwd() / "less.exe")
+    except (httpx.HTTPError, OSError, ValueError, RuntimeError, tarfile.TarError, subprocess.CalledProcessError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
-def create_compile_batchfile(archive_dest: str):
-    """Create a .bat file containing environment setup
-    and nmake compile commands
-    """
-
-    bat = "compile.bat"
-    try:
-        with open(bat, "w") as fp:
-            fp.write("@echo off\n")
-            fp.write('cd /d "%s"\n' % (archive_dest))
-            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
-            fp.write("nmake /f Makefile.wnm\n")
-            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
-            fp.write("copy /y less.exe ..\n")
-            fp.write("if errorlevel 1 exit /b %errorlevel%\n")
-    except:
-        return False
-
-    return bat
-
-
-def main():
-    if not (page := download_less_web_page()):
-        print("Unable to download URL: %s" % (LESSURL))
-        sys.exit(10)
-        return
-
-    version, url = get_latest_version_url(page)
-    if version is None:
-        print("Unable to extract version from: %s" % (LESSURL), file=sys.stderr)
-        sys.exit(20)
-
-    if not (archive := download_and_save(url)):
-        print("Unable to download file: %s" % (url), file=sys.stderr)
-        sys.exit(30)
-
-    if not (archive_dest := extract_archive(archive)):
-        print("Unable to unzip archive: %s" % (archive), file=sys.stderr)
-        sys.exit(40)
-
-    if not (cmd := create_compile_batchfile(archive_dest)):
-        print("Unable to create batch file", file=sys.stderr)
-        sys.exit(50)
-
-    result = subprocess.run((cmd,), shell=True, capture_output=True)
-    if result.returncode > 0:
-        err = result.stderr.decode("utf-8")
-        out = result.stdout.decode("utf-8")
-        print("Compile failed:\n%s\n\n%s\n" % (out, err))
-        sys.exit(60)
-
-
-if "__main__" == __name__:
-    main()
-
-# end of script
+if __name__ == "__main__":
+    sys.exit(main())
