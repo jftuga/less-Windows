@@ -1,4 +1,4 @@
-name: Update script dependencies
+name: Update Python dependencies
 
 on:
   schedule:
@@ -22,17 +22,25 @@ jobs:
     - uses: astral-sh/setup-uv@v10.1.0
 
     - name: Upgrade script lockfiles
+      id: upgrade
       run: |
         uv lock --script build.py --upgrade
         uv lock --script .github/scripts/checkver.py --upgrade
+        if git diff --quiet -- build.py.lock .github/scripts/checkver.py.lock; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
 
     # checkver also runs build.py --discover using its own locked dependencies.
     - name: Run scripts with updated dependencies
+      if: ${{ steps.upgrade.outputs.changed == 'true' }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: uv run --locked .github/scripts/checkver.py
 
     - name: Create dependency update pull request
+      if: ${{ steps.upgrade.outputs.changed == 'true' }}
       uses: peter-evans/create-pull-request@v8
       with:
         token: ${{ github.token }}
