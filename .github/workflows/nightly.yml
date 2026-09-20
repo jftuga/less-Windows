@@ -39,7 +39,14 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         FORCE_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_build }}
-      run: uv run --locked .github/scripts/checkver.py
+      run: |
+        if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" == "refs/heads/test-beta-709" && "$FORCE_BUILD" != "true" ]]; then
+          release='[{"version":"709","beta":true,"promote":false,"tag_name":"less-v709","notes_url":"https://greenwoodsoftware.com/less/news.709.html","make_latest":"false"}]'
+          echo "builds=$release" >> "$GITHUB_OUTPUT"
+          echo "releases=$release" >> "$GITHUB_OUTPUT"
+        else
+          uv run --locked .github/scripts/checkver.py
+        fi
 
   build:
     runs-on: windows-${{ matrix.arch == 'arm' && '2022' || 'latest' }}
@@ -125,6 +132,7 @@ jobs:
 
           Release notes can be found [here](${{ matrix.release.notes_url }}).
         tag_name: ${{ matrix.release.tag_name }}
+        target_commitish: ${{ github.sha }}
         name: ${{ matrix.release.tag_name }}${{ matrix.release.beta && ' beta' || '' }}
         prerelease: ${{ matrix.release.beta }}
         make_latest: ${{ matrix.release.make_latest }}
