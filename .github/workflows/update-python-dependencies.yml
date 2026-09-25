@@ -51,6 +51,7 @@ jobs:
           build.py.lock
           .github/scripts/checkver.py.lock
         commit-message: 'chore(deps): update Python script lockfiles'
+        sign-commits: true
         title: 'chore(deps): bump Python dependencies'
         body: |
           Monthly update of Python script dependencies.
